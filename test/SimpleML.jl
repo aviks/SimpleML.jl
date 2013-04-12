@@ -5,7 +5,6 @@ using HDF5
 using JLD
 
 
-
 function testLogisticOnevsAll()
     f=jldopen(joinpath(Pkg.dir(),"SimpleML/test/mnist.jld"), "r")
     X=read(f, "X")
@@ -16,11 +15,11 @@ function testLogisticOnevsAll()
 
     all_theta = logisticAll(X, y, .1, 10)
 
+    p=logisticPredictAll(all_theta, X)
     @test_approx_eq mean((int(p.==y))) .9646
-
+    
 
 end
-
 
 
 testLogisticOnevsAll()

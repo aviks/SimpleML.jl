@@ -1,6 +1,7 @@
 module SimpleML
 
 using Optim
+using OptionsMod
 
 
 export logisticPredict, logistic, logisticReg, logisticAll, logisticPredictAll
@@ -78,17 +79,20 @@ function logisticCostReg(theta, X, y, grad, lambda)
     end
 
     if !(grad === nothing)
+        gptr = pointer(grad)
         for j=1:n
+            grad[j]=0
             for i = 1:m
                 grad[j] =  grad[j]  + (h[i] - y[i])*X[i,j];
             end
-
+            
            if j==1
                 grad[j] = grad[j]/m;
            else 
                 grad[j] = ( grad[j] + lambda* theta[j]) / m;
            end
         end
+        @assert gptr == pointer(grad)
     end
 
     return sum / m
@@ -109,17 +113,20 @@ function logistic(X, y)
 
     results, fval, fcount, converged = cgdescent((g,t)->logisticCost(t, X, y, g),  initial_theta)
 
-    println("Converged: $converged @ $(fval[end]) with coefficients $results in $fcount iterations. ")
+    #println("Converged: $converged @ $(fval[end]) with coefficients $results in $fcount iterations. ")
 
     return results
 end
 
 function logisticReg(X, y, lambda)
     initial_theta = zeros(size(X,2))
-    
-    results, fval, fcount, converged = cgdescent((g,t)->logisticCostReg(t, X, y, g, lambda),  initial_theta)
 
-    println("Converged: $converged @ $(fval[end]) with coefficients $results in $fcount iterations. ")
+
+    ops = @options itermax=200 tol=1e-5
+    
+    results, fval, fcount, converged = cgdescent((g,t)->logisticCostReg(t, X, y, g, lambda),  initial_theta, ops)
+
+    #println("Converged: $converged @ $(fval[end]) with coefficients $results in $fcount iterations. ")
 
     return results
 end

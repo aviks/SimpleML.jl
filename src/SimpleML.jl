@@ -8,6 +8,9 @@ export logisticPredict, logistic, logisticReg, logisticAll, logisticPredictAll
 
 sigmoid(x) = (1 + exp (-1 * x)) .^ -1
 
+sigmoidGradient(z) = sigmoid(z) .* (1-sigmoid(z));
+
+
 
 # function logisticCost(theta, X, y)
 #     m = length(y) #size of training set
@@ -122,7 +125,7 @@ function logisticReg(X, y, lambda)
     initial_theta = zeros(size(X,2))
 
 
-    ops = @options itermax=200 tol=1e-5
+    ops = @options itermax=50 tol=1e-5
     
     results, fval, fcount, converged = cgdescent((g,t)->logisticCostReg(t, X, y, g, lambda),  initial_theta, ops)
 
@@ -183,6 +186,81 @@ function logisticPredictAll(all_theta, X)
     return ix
 end
 
+#Predict a 2 layer neural network
+function predict2nn(theta1, theta2, X)
+    m = size(X, 1);
+    num_labels = size(theta2, 1)
+    p = zeros(size(X, 1), 1)
+    X = [ones(m, 1) X]
+    a2 = sigmoid(X * theta1'); 
+    a2 = [ones(m, 1) a2]
+    a3 = sigmoid (a2 * theta2')
 
+    for i=1:m
+        _, p[i] = findmax(a3[:,i])
+    end
+
+    return ix
+end
+
+#Cost function for a 2 layer neural network
+function nn2Cost(params, input_layer_size,  hidden_layer_size, num_labels, X, y, lambda, grad)
+
+    theta1 = reshape(params[1:hidden_layer_size * (input_layer_size + 1)], hidden_layer_size, (input_layer_size + 1))
+    theta2 = reshape(params[(1 + (hidden_layer_size * (input_layer_size + 1))):end], num_labels, (hidden_layer_size + 1))
+
+    m = size(X, 1)
+
+    J = 0
+    theta1_grad = zeros(size(theta1))
+    theta2_grad = zeros(size(theta2))
+
+    X = [ones(m, 1) X];
+
+    z2 = X * theta1'
+    a2 = sigmoid(z2) 
+
+    a2 = [ones(m, 1) a2]
+    a3 = sigmoid (a2 * theta2')
+    s=0
+    for i=1:m
+        yvector = [1:num_labels] == y[i]
+        s=s+sum(-yvector .* log(a3[i,:]) - (1-yvector) .* log (1-a3[i,:])); 
+    end
+
+    temp1 = theta1
+    temp2 = theta2
+    temp1[:, 1] = zeros(size(temp1, 1), 1)
+    temp2[:, 1] = zeros(size(temp2, 1), 1)
+
+    J = s/m  + (lambda/(2*m))*(sum(sum(temp1 .* temp1)) + sum(sum(temp2 .* temp2)))
+
+    if !(grad === nothing)
+        gptr = pointer(grad)
+        for t=1:m
+            yvector = [1:num_labels] == y[t]
+
+            delta3 = zeros(1,num_labels)
+            delta3 = a3[t,:] - yvector
+
+            delta2 = zeros (1, hidden_layer_size);
+            delta2 = (theta2' * delta3' )[2:end] .* sigmoidGradient(z2[t,:])' 
+
+            theta2_grad = theta2_grad + delta3' * a2[t,:]
+            theta1_grad = theta1_grad + delta2 * X[t,:]
+        end
+
+        theta1_grad = theta1_grad / m
+        theta2_grad = theta2_grad / m
+
+        theta1_grad = theta1_grad + (lambda/m) * temp1
+        theta2_grad = theta2_grad + (lambda/m) * temp2
+
+        grad[:] = [theta1_grad[:] ; theta2_grad[:]]
+        @assert gptr == pointer(grad)
+        
+    end
+
+end
 
 end
